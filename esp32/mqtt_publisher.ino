@@ -38,7 +38,7 @@ void setup()
     delay(1000);
     Serial.println("Conectandose a la red WiFi");
   }
-  Serial.println("Connected to WiFi");
+  Serial.println("Conectado a WiFi");
   //Iniciar la pantalla
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
   {
@@ -73,45 +73,92 @@ void setup()
 //funcion principal sin retorno
 void loop() 
 {
-  //loop que chequea si esta conectado y busca reconectarse
+  //loop que chequea que si no esta conectado este busque reconectarse con la funcion reconnect();
   if (!client.connected()) 
   {
     reconnect();
   }
   //Mensajes
   client.loop();
+  
+    
+  
 
-  //para debugeo
-  if (Serial.available()) 
+  //leer datos del puerto serial
+  if (Serial.available() > 0) 
   {
-    String mensaje = Serial.readStringUntil('\n');
-    //Para publicar en MQTT se necesitan crear diccionarios
-    const size_t capacidad = JSON_OBJECT_SIZE(1) + 20;
+    Serial.print("Debug");
+    // reads characters from the serial buffer into a String. The function terminates if it times out (see setTimeout()).
+    String datos = Serial.readStringUntil('\n');
+    Serial.print("Datos recibidos: ");
+    Serial.println(datos);
+    //https://stackoverflow.com/questions/12874128/error-invalid-conversion-from-const-char-to-char
+    char* datosMutable = new char[datos.length() + 1];
+    strcpy(datosMutable, datos.c_str());
+    //separar los datos en variables individuales para que sea mas facil en thinsgboard leer variables
+    char *ptr = strtok(datosMutable, ",");
+    float humedad = atof(ptr);
+    ptr = strtok(NULL, ",");
+    float temperatura = atof(ptr);
+    ptr = strtok(NULL, ",");
+    float luz = atof(ptr);
+    ptr = strtok(NULL, ",");
+    float rayosUV = atof(ptr);
+
+    //eliminar la copia mutable de la cadena
+    delete[] datosMutable;
+    //payload falsos con fines de debug. para utilizarlos se debe comentar la seccion donde 
+    //se declaran las variables que se leen del puerto rcd del lilygo
+    //crear el JSON con los datos y enviarlo a Thingsboard
+    /*float humedad = random(0, 100);
+    float temperatura = random(15, 30);
+    float luz = random(0, 1024);
+    float rayosUV = random(0, 11);*/
+
+    const size_t capacidad = JSON_OBJECT_SIZE(4);
     DynamicJsonDocument doc(capacidad);
-    doc["mensaje"] = mensaje;
-    // Serialize the object to a JSON string
+    doc["humedad"] = humedad;
+    doc["temperatura"] = temperatura;
+    doc["luz"] = luz;
+    doc["rayosUV"] = rayosUV;
     String json;
     serializeJson(doc, json);
-    // Publish the JSON string to the MQTT broker
+    //Enviar a Thingsboard
     client.publish(topic, json.c_str());
-    Serial.print("Mensaje enviado: ");
-    Serial.println(mensaje);
+    Serial.print("Datos enviados a Thingsboard: ");
+    Serial.println(json);
+
+    //mostrar los datos en la pantalla OLED
+    //hacemos un flush de los datos
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println(mensaje);
+    display.print("H: ");
+    display.print(humedad);
+    display.println("%");
+    display.print("T: ");
+    display.print(temperatura);
+    display.println(" C");
+    display.print("L: "); 
+    display.println(luz);
+    display.print("UV: ");
+    display.println(rayosUV);
     display.display();
   }
 }
+//Funcion de reconectar en caso de que se haya perdido conexion el servidor
 void reconnect() 
 {
-  while (!client.connected()) {
+  while (!client.connected()) 
+  {
     Serial.println("Intentando conectarse al Broker");
     //Intentar conectarse
-    if (client.connect("lora32-client", token, "")) {
+    if (client.connect("lora32-client", token, "")) 
+    {
       Serial.println("Conectado al Broker MQTT de la Escuela de Ingenieria Electrica, UCR");
-     client.subscribe(topic);
+      client.subscribe(topic);
     }
-    else {
+    else 
+    {
       Serial.print("Conexion al Broker fallida");
       Serial.println(client.state());
       delay(1000);

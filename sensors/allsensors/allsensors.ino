@@ -10,7 +10,7 @@ Adafruit_LTR390 ltr390 = Adafruit_LTR390();
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
   dht11.begin();
   APDS.begin();
   ltr390.begin();
@@ -36,9 +36,18 @@ void loop() {
   humidity = dht11.readHumidity();
   temperature = dht11.readTemperature();
 
-  Serial.println("Humedad: " + String(humidity));
-  Serial.println("Temperatura: " + String(temperature));
-  Serial.println("r = " + String(r) + " g = " + String(g) + " b = " + String(b));
-  Serial.println("Intensidad de luz ambiental: " + String(a));
-  Serial.println("Intensidad de rayos UV: " + String(uv));
+  // Serial.println("Humedad: " + String(humidity));
+  // Serial.println("Temperatura: " + String(temperature));
+  // Serial.println("r = " + String(r) + " g = " + String(g) + " b = " + String(b));
+  // Serial.println("Intensidad de luz ambiental: " + String(a));
+  // Serial.println("Intensidad de rayos UV: " + String(uv));
+
+  Serial.print(humidity);
+  Serial.print(",");
+  Serial.print(temperature);
+  Serial.print(",");
+  Serial.print(a);
+  Serial.print(",");
+  Serial.print(uv);
+  Serial.println();
 }
