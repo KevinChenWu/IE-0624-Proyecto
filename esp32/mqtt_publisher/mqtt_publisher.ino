@@ -5,43 +5,41 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-
-
-//Como Paho de Python, ponemos los datos de Thingsboard
+// Datos de Thingsboard
 const char* broker = "iot.eie.ucr.ac.cr";
 const int port = 1883;
-const char* token = "Bahn0VJnwX25hHNNoawH";
+const char* token = "WZVMCLd2U6JaGsfOxlBv";
 const char* topic = "v1/devices/me/telemetry";
-//Aqui ponemos la informacion del WiFi al cual nos vamos a conectar
-const char* ssid = "El conuco";
-const char* password = "zxcvbn111";
-/*Aqui se intentaron varias bibliotecas pero la que funciono bien sin dar errores fue 
-Adafruit_GFX.h y Adafruit_SSD1306.h*/
+
+// Informacion del WiFi para conexión de Internet
+const char* ssid = "AndroidAPdaf7";
+const char* password = "clox8053";
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-//Arduino trae algunos ejemplos, tambien esta es la fuente:
-//https://pubsubclient.knolleary.net/api
+// Arduino trae algunos ejemplos, también esta página: https://pubsubclient.knolleary.net/api
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 
-void setup() 
-{
-  // Conectarse al WiFi, lo del serial es con fines de debug.
+void setup() {
+  // put your setup code here, to run once:
+  // Serial monitor del Arduino IDE
   Serial.begin(115200);
-  while (!Serial);
+  // Serial port del LILYGO TTGO LoRa32
+  Serial1.begin(115200, SERIAL_8N1, 23);
  
+  // Inicialización y conexión del WiFi
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) 
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Conectandose a la red WiFi");
   }
   Serial.println("Conectado a WiFi");
-  //Iniciar la pantalla
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
-  {
+
+  //Inicialización de la pantalla
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println("No se pudo iniciar la pantalla");
     while (1);
   }
@@ -52,50 +50,38 @@ void setup()
   display.display();
   delay(2000);
 
-  //Conectarse a MQTT iot.eie.ucr.ac.cr
-  //
+  // Inicialización del MQTT
   client.setServer(broker, port);
-  while (!client.connected()) 
-  {
+  while (!client.connected()) {
     Serial.println("Conectandose al Broker MQTT de la Escuela de Ingenieria Electrica, UCR");
-    if (client.connect("lora32-client", token, "")) 
-    {
+    if (client.connect("lora32-client", token, "")) {
       Serial.println("Conectado al Broker MQTT de la Escuela de Ingenieria Electrica, UCR");
       client.subscribe(topic);
-    }
-    else {
+    } else {
       Serial.print("Conexion al Broker fallida");
       Serial.println(client.state());
       delay(1000);
     }
   }
 }
-//funcion principal sin retorno
-void loop() 
-{
-  //loop que chequea que si no esta conectado este busque reconectarse con la funcion reconnect();
-  if (!client.connected()) 
-  {
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  // Verificación de la conexión con la plataforma ThingsBoard
+  if (!client.connected()) {
     reconnect();
   }
-  //Mensajes
   client.loop();
-  
-    
-  
 
-  //leer datos del puerto serial
-  if (Serial.available() > 0) 
-  {
-    Serial.print("Debug");
-    // reads characters from the serial buffer into a String. The function terminates if it times out (see setTimeout()).
-    String datos = Serial.readStringUntil('\n');
-    Serial.print("Datos recibidos: ");
-    Serial.println(datos);
-    //https://stackoverflow.com/questions/12874128/error-invalid-conversion-from-const-char-to-char
+  // Lectura de datos del Serial port
+  if (Serial1.available() > 0) {
+    String datos = Serial1.readStringUntil('\n');  
+    Serial.println("Datos recibidos: " + String(datos));
+
+    // Split de datos delimitados por comas    
+    // Código basado en https://stackoverflow.com/questions/12874128/error-invalid-conversion-from-const-char-to-char
     char* datosMutable = new char[datos.length() + 1];
     strcpy(datosMutable, datos.c_str());
-    //separar los datos en variables individuales para que sea mas facil en thinsgboard leer variables
     char *ptr = strtok(datosMutable, ",");
     float humedad = atof(ptr);
     ptr = strtok(NULL, ",");
@@ -104,17 +90,16 @@ void loop()
     float luz = atof(ptr);
     ptr = strtok(NULL, ",");
     float rayosUV = atof(ptr);
-
-    //eliminar la copia mutable de la cadena
+    // Se elimina la copia mutable de la cadena para liberar memoria
     delete[] datosMutable;
-    //payload falsos con fines de debug. para utilizarlos se debe comentar la seccion donde 
-    //se declaran las variables que se leen del puerto rcd del lilygo
-    //crear el JSON con los datos y enviarlo a Thingsboard
-    /*float humedad = random(0, 100);
-    float temperatura = random(15, 30);
-    float luz = random(0, 1024);
-    float rayosUV = random(0, 11);*/
 
+    // Payload falsos con fines de debug. Para utilizarlos se debe comentar la sección anterior de Split
+    // float humedad = random(0, 100);
+    // float temperatura = random(15, 30);
+    // float luz = random(0, 1024);
+    // float rayosUV = random(0, 11);
+
+    // Se crea el JSON con los datos y se envia a Thingsboard
     const size_t capacidad = JSON_OBJECT_SIZE(4);
     DynamicJsonDocument doc(capacidad);
     doc["humedad"] = humedad;
@@ -123,13 +108,13 @@ void loop()
     doc["rayosUV"] = rayosUV;
     String json;
     serializeJson(doc, json);
-    //Enviar a Thingsboard
+
+    // Se envia a ThingsBoard
     client.publish(topic, json.c_str());
     Serial.print("Datos enviados a Thingsboard: ");
     Serial.println(json);
 
-    //mostrar los datos en la pantalla OLED
-    //hacemos un flush de los datos
+    // Se muestra los datos en la pantalla OLED del LILYGO TTGO LoRa32
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("H: ");
@@ -145,20 +130,16 @@ void loop()
     display.display();
   }
 }
-//Funcion de reconectar en caso de que se haya perdido conexion el servidor
-void reconnect() 
-{
-  while (!client.connected()) 
-  {
+
+// Función de reconectar en caso de que se haya perdido conexión el servidor
+void reconnect() {
+  while (!client.connected()) {
     Serial.println("Intentando conectarse al Broker");
-    //Intentar conectarse
-    if (client.connect("lora32-client", token, "")) 
-    {
+    // Se intenta conectarse
+    if (client.connect("lora32-client", token, "")) {
       Serial.println("Conectado al Broker MQTT de la Escuela de Ingenieria Electrica, UCR");
       client.subscribe(topic);
-    }
-    else 
-    {
+    } else {
       Serial.print("Conexion al Broker fallida");
       Serial.println(client.state());
       delay(1000);

@@ -10,7 +10,12 @@ Adafruit_LTR390 ltr390 = Adafruit_LTR390();
 
 void setup() {
   // put your setup code here, to run once:
+  // Serial monitor del Arduino IDE
   Serial.begin(115200);
+  // Serial port del Arduino Nano 33 BLE Sense (pines TX y RX)
+  Serial1.begin(115200);
+
+  // Inicialización de los sensores  
   dht11.begin();
   APDS.begin();
   ltr390.begin();
@@ -36,18 +41,8 @@ void loop() {
   humidity = dht11.readHumidity();
   temperature = dht11.readTemperature();
 
-  // Serial.println("Humedad: " + String(humidity));
-  // Serial.println("Temperatura: " + String(temperature));
-  // Serial.println("r = " + String(r) + " g = " + String(g) + " b = " + String(b));
-  // Serial.println("Intensidad de luz ambiental: " + String(a));
-  // Serial.println("Intensidad de rayos UV: " + String(uv));
-
-  Serial.print(humidity);
-  Serial.print(",");
-  Serial.print(temperature);
-  Serial.print(",");
-  Serial.print(a);
-  Serial.print(",");
-  Serial.print(uv);
-  Serial.println();
+  // Mandar los datos al Serial Monitor
+  Serial.println(String(humidity) + "," + String(temperature) + "," + String(a) + "," + String(uv));
+  // Mandar los datos al Serial port
+  Serial1.println(String(humidity) + "," + String(temperature) + "," + String(a) + "," + String(uv));
 }
